@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+
 from flights.service_layer.repository import AbstractRepository
 
 

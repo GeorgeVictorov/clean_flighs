@@ -1,4 +1,5 @@
 from typing import Protocol
+
 from flights.domain.model import Flight
 
 
