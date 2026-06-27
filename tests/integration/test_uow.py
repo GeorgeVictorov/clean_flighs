@@ -83,10 +83,12 @@ def test_commit_updates_existing_flight(sqlite_session_factory):
     with sqlite_session_factory() as conn:
         row = conn.execute(
             """
-            select passenger_id
+            select 
+                passenger_id
             from seats
-            where flight_id = ?
-              and seat_id = ?
+            where 
+                flight_id = ? and 
+                seat_id = ?
             """,
             ("su-104", "A1"),
         ).fetchone()
@@ -111,9 +113,11 @@ def test_commit_without_changes(sqlite_session_factory):
     with sqlite_session_factory() as conn:
         version = conn.execute(
             """
-            select version
+            select 
+                version
             from flights
-            where flight_id = ?
+            where 
+                flight_id = ?
             """,
             ("su-104",),
         ).fetchone()[0]
@@ -134,20 +138,22 @@ def test_rollback_discards_changes(sqlite_session_factory):
     with SqliteUnitOfWork(sqlite_session_factory) as uow:
         flight = uow.flights.get("su-104")
         flight.reserve("passenger-1", "A1")
-        # commit нет
 
     with sqlite_session_factory() as conn:
         row = conn.execute(
             """
-            select passenger_id
+            select 
+                passenger_id
             from seats
-            where flight_id = ?
-              and seat_id = ?
+            where 
+                flight_id = ? and 
+                seat_id = ?
             """,
             ("su-104", "A1"),
         ).fetchone()
 
     assert row[0] is None
+
 
 def test_get_returns_none_for_unknown_flight(sqlite_session_factory):
     with SqliteUnitOfWork(sqlite_session_factory) as uow:

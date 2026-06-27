@@ -1,5 +1,6 @@
-import uuid
 import sqlite3
+import uuid
+
 import pytest
 
 from flights.infrastructure.repo.sqlite.schema import SCHEMA
