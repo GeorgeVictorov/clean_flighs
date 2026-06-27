@@ -1,6 +1,7 @@
 import sqlite3
 
 from flights.domain.model import Flight
+from flights.domain.errors import ConcurrencyError
 from flights.infrastructure.repo.sqlite.mapper import to_domain
 
 
@@ -63,8 +64,10 @@ class SqliteRepository:
 
             if snapshot is None:
                 self._insert(flight)
+                self._snapshots[flight_id] = flight.persistence_state
             elif snapshot != flight.persistence_state:
                 self._update(flight)
+                self._snapshots[flight_id] = flight.persistence_state
 
     def _insert(self, flight: Flight):
 
@@ -100,12 +103,12 @@ class SqliteRepository:
                     seat.passenger_id,
                 )
                 for seat in flight.seats
-            ],
+            ]
         )
 
     def _update(self, flight: Flight):
 
-        self._conn.execute(
+        cursor = self._conn.execute(
             """
             update flights
             set
@@ -121,6 +124,9 @@ class SqliteRepository:
                 flight.version_number,
             ),
         )
+
+        if cursor.rowcount != 1:
+            raise ConcurrencyError()
 
         self._conn.execute(
             """
@@ -149,3 +155,5 @@ class SqliteRepository:
                 for seat in flight.seats
             ],
         )
+
+        flight.version_number += 1

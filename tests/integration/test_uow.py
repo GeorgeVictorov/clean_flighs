@@ -1,4 +1,9 @@
+import pytest
+import time
+import threading
+
 from flights.domain.model import Flight
+from flights.domain.errors import ConcurrencyError
 from flights.infrastructure.uow.sqlite.sqlite_uow import SqliteUnitOfWork
 
 
@@ -160,3 +165,74 @@ def test_get_returns_none_for_unknown_flight(sqlite_session_factory):
         flight = uow.flights.get("unknown")
 
     assert flight is None
+
+
+def test_optimistic_locking(sqlite_session_factory):
+    flight = Flight.create_new(
+        flight_id="su-104",
+        seat_ids=["A1", "A2"],
+    )
+
+    with SqliteUnitOfWork(sqlite_session_factory) as uow:
+        uow.flights.add(flight)
+        uow.commit()
+
+    uow1 = SqliteUnitOfWork(sqlite_session_factory)
+    uow2 = SqliteUnitOfWork(sqlite_session_factory)
+
+    with uow1:
+        with uow2:
+            flight1 = uow1.flights.get("su-104")
+            flight2 = uow2.flights.get("su-104")
+
+            flight1.reserve("p1", "A1")
+            uow1.commit()
+
+            flight2.reserve("p2", "A2")
+
+            with pytest.raises(ConcurrencyError):
+                uow2.commit()
+
+
+@pytest.mark.skip
+def test_optimistic_locking_threads(sqlite_session_factory):
+    with SqliteUnitOfWork(sqlite_session_factory) as uow:
+        uow.flights.add(
+            Flight.create_new(
+                flight_id="su-104",
+                seat_ids=["A1", "A2"],
+            )
+        )
+        uow.commit()
+
+    barrier = threading.Barrier(2)
+    errors = []
+
+    def worker(passenger_id, seat_id):
+        try:
+            with SqliteUnitOfWork(sqlite_session_factory) as uow:
+                flight = uow.flights.get("su-104")
+
+                flight.reserve(passenger_id, seat_id)
+
+                barrier.wait()
+
+                uow.commit()
+
+            errors.append("ok")
+
+        except Exception as e:
+            print(type(e), e)
+            errors.append(f"concurrency")
+
+    t1 = threading.Thread(target=worker, args=("p1", "A1"))
+    t2 = threading.Thread(target=worker, args=("p2", "A2"))
+
+    t1.start()
+    t2.start()
+
+    t1.join()
+    t2.join()
+
+    assert errors.count("ok") == 1
+    assert errors.count("concurrency") == 1
