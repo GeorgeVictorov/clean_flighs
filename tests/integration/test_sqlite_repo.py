@@ -1,7 +1,9 @@
 import pytest
-from flights.infrastructure.repo.sqlite.sqlite_repository import SqliteRepository
+
 from flights.domain.errors import InfrastructureError
 from flights.domain.model import Flight
+from flights.infrastructure.repo.sqlite.sqlite_repository import \
+    SqliteRepository
 
 
 def test_get_raises_error_if_conn_closed(sqlite_session_factory):
