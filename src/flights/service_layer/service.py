@@ -1,45 +1,41 @@
-from flights.domain.model import Flight
+from flights.domain import commands, errors, model
 from flights.service_layer.uow import AbstractUnitOfWork
-from flights.domain.errors import FlightNotFound
 
 
 class FlightService:
     def __init__(self, uow: AbstractUnitOfWork):
         self.uow = uow
 
-    def create_flight(self, flight_id: str, seats: set[str]):
+    def create_flight(self, cmd: commands.CreateFlight):
         with self.uow:
-            if self.uow.flights.get(flight_id):
-                return
+            flight = self.uow.flights.get(cmd.flight_id)
 
-            flight = Flight(
-                flight_id=flight_id,
-                seats=seats,
-                reservations={}
-            )
+            if flight is not None:
+                raise errors.FlightAlreadyExists('flight already exists')
 
+            flight = model.Flight.create_new(cmd.flight_id, cmd.seat_ids)
             self.uow.flights.add(flight)
 
             self.uow.commit()
 
-    def reserve_seat(self, flight_id: str, passenger_id: str, seat_id: str):
+    def reserve_seat(self, cmd: commands.ReserveSeat):
         with self.uow:
-            flight = self._get_flight(flight_id)
+            flight = self.uow.flights.get(cmd.flight_id)
 
-            flight.reserve(passenger_id, seat_id)
+            if flight is None:
+                raise errors.FlightNotFound('flight not found')
+
+            flight.reserve(cmd.passenger_id, cmd.seat_id)
 
             self.uow.commit()
 
-    def cancel_reservation(self, flight_id: str, passenger_id: str, seat_id: str):
+    def cancel_reservation(self, cmd: commands.CancelReservation):
         with self.uow:
-            flight = self._get_flight(flight_id)
+            flight = self.uow.flights.get(cmd.flight_id)
 
-            flight.cancel(passenger_id, seat_id)
+            if flight is None:
+                raise errors.FlightNotFound('flight not found')
+
+            flight.cancel(cmd.passenger_id)
 
             self.uow.commit()
-
-    def _get_flight(self, flight_id):
-        flight = self.uow.flights.get(flight_id)
-        if not flight:
-            raise FlightNotFound(f'flight not found, flight_id={flight_id}')
-        return flight
