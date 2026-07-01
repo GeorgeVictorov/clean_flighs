@@ -1,15 +1,41 @@
 services:
-
   api:
     build:
       context: .
       dockerfile: Dockerfile
+
     image: flights-image:latest
+
+    depends_on:
+      - postgres
 
     ports:
       - "5005:80"
+
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
     volumes:
       - ./src:/app/src
       - ./tests:/app/tests
 
+  postgres:
+    image: postgres:17-alpine
+
+    ports:
+      - "54321:5432"
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
