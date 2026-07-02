@@ -4,7 +4,7 @@ import uuid
 import pytest
 from psycopg_pool import ConnectionPool
 
-from flights.config import get_postgres_uri
+from flights.config import get_test_postgres_uri
 from flights.infrastructure.repo.sqlite.schema import SCHEMA
 
 
@@ -22,7 +22,7 @@ def sqlite_session_factory():
 
 @pytest.fixture(scope="session")
 def db_pool():
-    db_uri = get_postgres_uri()
+    db_uri = get_test_postgres_uri()
     with ConnectionPool(
             conninfo=db_uri,
             min_size=1,

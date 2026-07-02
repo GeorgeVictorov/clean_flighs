@@ -18,6 +18,7 @@ services:
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
 
   migrate:
     build:
@@ -35,6 +36,18 @@ services:
 
     command: up
 
+  migrate-test:
+    image: flights-migrations:0.1.0
+
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_TEST}?sslmode=disable
+
+    command: up
+
   api:
     build:
       context: .
@@ -43,7 +56,7 @@ services:
     image: flights-image:0.1.0
 
     depends_on:
-      migrate:
+      migrate-test:
         condition: service_completed_successfully
 
     ports:
@@ -55,6 +68,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB_TEST: ${POSTGRES_DB_TEST}
 
     volumes:
       - ./src:/app/src

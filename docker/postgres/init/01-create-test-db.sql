@@ -1,0 +1,1 @@
+create database flight_test;
